@@ -25,6 +25,7 @@
 FCStSNE <- function(LoaderPATH = "fcs",
                     ceil = 5000,
                     FNnames = "names.csv",
+                    local = NULL,
                     OutputSuffix = "Out",
                     DotSNE = TRUE,
                     DoOneSENSE = TRUE,
@@ -51,12 +52,19 @@ FCStSNE <- function(LoaderPATH = "fcs",
             FFdata <- rbind(FFdata, FFa)
     }
     message("FCS Files Read")
-    keeptable <- read.csv(paste(dirname(LoaderPATH),
-                                "names.csv",
-                                sep = .Platform$file.sep))
+    if (is.null(local)){
+    keeptable <- read.csv(paste(LoaderPATH,
+                                "Output/names.csv",
+                                sep = .Platform$file.sep))}
+    else {
+      keeptable <- read.csv(paste(local,
+                                  "names.csv",
+                                  sep = .Platform$file.sep))
+    }
     keeprowbool <- sapply(keeptable[, 2], function(x) any(x == "Y"))
     keeprows <- subset(keeptable, keeprowbool)
     data <- FFdata[, which(colnames(FFdata) %in% keeprows[, 1])]
+    data <- as.data.frame(data)
     lgcl <- logicleTransform(w = 0.25, t = 16409, m = 4.5, a = 0)
     ilgcl <- inverseLogicleTransform(trans = lgcl)
     data1 <- apply(data, 2, lgcl)
@@ -65,7 +73,7 @@ FCStSNE <- function(LoaderPATH = "fcs",
     tSNEmat <- NULL
     if (DotSNE) {
         message("Doing tSNE")
-        tSNEdata3 <- Rtsne(data1, dims = 2)
+        tSNEdata3 <- Rtsne(data1, dims = 2,check_duplicates = FALSE)
         tSNEmat <- tSNEdata3$Y
         colnames(tSNEmat) <- c("tSNE1", "tSNE2")
         plot(tSNEmat[, 1], tSNEmat[, 2], pch = ".",
@@ -84,6 +92,7 @@ FCStSNE <- function(LoaderPATH = "fcs",
                                 function(x) any(x == "Y"))
             keeprows <- subset(keeptable, keeprowbool)
             dataX <- FFdata1[, which(colnames(FFdata1) %in% keeprows[, 1])]
+            dataX <- as.matrix(dataX)
             tSNEdata3 <- Rtsne(dataX, dims = 1, check_duplicates = FALSE)
             tSNEmat1 <- tSNEdata3$Y
             colnames(tSNEmat1) <- OneDtSNEname
@@ -106,6 +115,7 @@ FCStSNE <- function(LoaderPATH = "fcs",
                                 function(x) any(x == "Y"))
         keeprows <- subset(keeptable, keeprowbool)
         dataX <- FFdata1[, which(colnames(FFdata1) %in% keeprows[, 1])]
+        dataX <- as.matrix(dataX)
         tSNEdata3 <- Rtsne(dataX, dims = 1, check_duplicates = FALSE)
         tSNEmat1 <- tSNEdata3$Y
         colnames(tSNEmat1) <- OneDtSNEname
@@ -136,16 +146,26 @@ FCStSNE <- function(LoaderPATH = "fcs",
         colnames(newBaseData) <- colnames(exprs(newFF))
         exprs(newFF) <- newBaseData
         subsetNIscore <- NIscore[FFdata[, dim(FFdata)[2]] == FFs, ]
-        newFF <- cbind2(newFF, subsetNIscore)
-        newFF@parameters$desc <- colnames(cbind(newBaseData, subsetNIscore))
-        suppressWarnings(dir.create(paste0(LoaderPATH, "_", OutputSuffix)))
+        colnames(subsetNIscore)[colnames(subsetNIscore) == 'input'] <- 'xOneSense'
+        colnames(subsetNIscore)[colnames(subsetNIscore) == 'input2'] <- 'yOneSense'
+        newFF <- flowCore::fr_append_cols(newFF, subsetNIscore)
+        newFF@parameters$desc <- c(fs[[FFs]]@parameters$desc, colnames(subsetNIscore))
+        suppressWarnings(dir.create(paste0(LoaderPATH, "/", "Output")))
         BaseFN <- sapply(strsplit(FcsFileNames[FFs], split = "\\."), "[", 1)
-        FNresult <- paste0(LoaderPATH, "_", OutputSuffix,
-                        "/", BaseFN, "_", OutputSuffix, ".fcs")
+
+        if (is.null(local)){
+          FNresult <- paste0(LoaderPATH, "/", "Output",
+                             "/", BaseFN, "_", OutputSuffix, ".fcs")}
+        else {
+          FNresult <- paste0(local,
+                             "/", BaseFN, "_", OutputSuffix, ".fcs")
+        }
+
+
         newFF@description$"$FIL" <- paste0(BaseFN, "_", OutputSuffix, ".fcs")
         newFF@description$FILENAME <- paste0(BaseFN, "_", OutputSuffix, ".fcs")
         identifier(newFF) <- paste0(BaseFN, "_", OutputSuffix)
-        suppressWarnings(write.FCS(newFF, FNresult))
+        write.FCS(newFF, FNresult)
     }
     message("New FCS Files Written")
 }
