@@ -34,8 +34,9 @@
 #' #fcsoutpath <- system.file('extdata/fcs_Out',package='oneSENSE')
 #' #remove hash symbol to run
 #' #OneSmapperFlour(LoaderPATH=fcsoutpath) #remove hash symbol to run
-OneSmapperFlour <- function(LoaderPATH = "fcs_Out",
+OneSmapperFlour <- function(LoaderPATH = "S:\\Mcyto\\Experiments\\R&D\\2022\\George-Alehandro_oneSense\\Output",
                             Bins = 250,
+                            local = NULL,
                             doCoords = FALSE,
                             doFreq = FALSE) {
     message("Running OneSmapperFlour")
@@ -45,7 +46,6 @@ OneSmapperFlour <- function(LoaderPATH = "fcs_Out",
     FFdata <- NULL
     for (FFs in 1:FNumBC) {
         FFa <- exprs(fs[[FFs]])
-
         # Fixup column names
         colnames(FFa) <- fs[[FFs]]@parameters$desc
         empties <- which(is.na(colnames(FFa)) | colnames(FFa) == " ")
@@ -57,23 +57,31 @@ OneSmapperFlour <- function(LoaderPATH = "fcs_Out",
         FFdata <- rbind(FFdata, FFa)
     }
 
-
     lgcl <- logicleTransform(w = 0.05, t = 16409, m = 4.5, a = 0)
 
     Xx1DtSNEmat <- NULL
-    keeptable <- read.csv(paste(dirname(LoaderPATH),
-                                "names.csv",
-                                sep = .Platform$file.sep))
+    if (is.null(local)){
+        keeptable <- read.csv(paste(LoaderPATH,
+                                    "Output/names.csv",
+                                    sep = .Platform$file.sep))}
+    else {
+        keeptable <- read.csv(paste(local,
+                                    "names.csv",
+                                    sep = .Platform$file.sep))
+    }
     for (factor in 2:(dim(keeptable)[2])) {
     # edited code
+    #keeprowbool <- sapply(keeptable[, factor], function(x) any(x == "Y"))
     keeprowbool <- sapply(keeptable[, factor], function(x) any(x == "Y"))
     keepnames <- keeptable[keeprowbool, 1]
     keeprows <- subset(keeptable, keeprowbool)
     data <- FFdata[, which(colnames(FFdata) %in% keeprows[, 1])]
+    data <- as.matrix(data)
+
+    colnames(data) <- colnames(FFdata)[which(colnames(FFdata) %in% keeprows[, 1])]
     data <- cbind(data,
                 FFdata[,
                 which(colnames(FFdata) %in% colnames(keeptable[-1]))])
-
     data1 <- apply(data, 2, lgcl)
     message("Applying logicle transform")
     OneDtSNEname <- colnames(keeptable)[factor]
@@ -84,18 +92,24 @@ OneSmapperFlour <- function(LoaderPATH = "fcs_Out",
     Xx1DtSNEmat <- cbind(Xx1DtSNEmat, tSNEmat1)
 
     # Make heatplot annotation
-
-
+    dataX <- as.matrix(dataX)
     tSNEbins <- cut(tSNEmat1, breaks = Bins, labels = 1:Bins)
     OneSENSEmed <- apply(dataX, 2,
                         function(x) (tapply(x, tSNEbins, FUN = median)))
     OneSENSEmed[is.na(OneSENSEmed)] <- 0
-    pdfFN <- paste(dirname(LoaderPATH),
-                    paste0(OneDtSNEname, "_Freq.pdf"),
-                    sep = .Platform$file.sep)
+
+
+    if (is.null(local)){
+        pdfFN <- paste(dirname(LoaderPATH),
+                       paste0(OneDtSNEname, "_Freq.pdf"),
+                       sep = .Platform$file.sep)}
+    else {
+        pdfFN <- paste(local,
+                       paste0(OneDtSNEname, "_Freq.pdf"),
+                       sep = .Platform$file.sep)
+    }
     pdf(file = pdfFN, width = 14, height = 6)
     breaks = seq(0, 3, by = 0.005)
-
     my_palette <-
         colorRampPalette(c("blue", "white", "red"))(n = length(breaks) - 1)
     hmap <- heatmap.2(t(OneSENSEmed), col = my_palette, breaks = breaks,
@@ -107,7 +121,7 @@ OneSmapperFlour <- function(LoaderPATH = "fcs_Out",
     testcol <- seq(from = min(Xx1DtSNEmat),
                     to = (max(Xx1DtSNEmat) - (max(Xx1DtSNEmat)/Bins)),
                     by = (max(Xx1DtSNEmat)/Bins))
-    if (OneDtSNEname == "input") {
+    if (OneDtSNEname == "xOneSense") {
         p1 <- plot_ly(z = hmapclu, y = rownames(hmapclu), x = testcol,
                     colors = my_palette,
                     type = "heatmap") %>% layout(title = paste(OneDtSNEname,
@@ -137,13 +151,14 @@ OneSmapperFlour <- function(LoaderPATH = "fcs_Out",
                                         nrows = 2,
                                         shareY = TRUE,
                                         shareX = TRUE))
-    combined
-    export(combined, file = paste(dirname(LoaderPATH),
-            "groupone.png",
-            sep = .Platform$file.sep))
-    browseURL(paste(dirname(LoaderPATH),
-                    "groupone.png",
-                    sep = .Platform$file.sep))
+    return(combined)
+
+    # export(combined, file = paste(dirname(LoaderPATH),
+    #         "groupone.png",
+    #         sep = .Platform$file.sep))
+    # browseURL(paste(dirname(LoaderPATH),
+    #                 "groupone.png",
+    #                 sep = .Platform$file.sep))
 }
 
 
@@ -167,6 +182,7 @@ getParameters <- function(rawFCSdir) {
     fcs <- suppressWarnings(read.FCS(fcsFile[1]))
     pd <- fcs@parameters@data
     markers <- paste("<", pd$name, ">:", pd$desc, sep = "")
+    #markers_desc <- colnames(fcs@exprs)
     markers_desc <- pd$desc
     gParam = list(markers = markers, markers_desc = markers_desc)
 
@@ -229,7 +245,7 @@ OneSmapperFreq1 <- function(LoaderPATH = "fcs_Out") {
 getCoords <- function(LoaderPATH = LoaderPATH, FFdata = FFdata) {
     lgcl <- logicleTransform(w = 0.25, t = 16409, m = 4.5, a = 0)
     gckeeptable <- read.csv(paste(dirname(LoaderPATH),
-                                "names.csv",
+                                "Output/names.csv",
                                 sep = .Platform$file.sep))
     gckeeprowbool <- apply(gckeeptable[, c(2, 3)],
                                 1,
@@ -266,7 +282,7 @@ OneSmapperFreq2 <- function(LoaderPATH = "fcs", Bins = 250, FFdata) {
     lgcl <- logicleTransform(w = 0.05, t = 16409, m = 4.5, a = 0)
     Xx1DtSNEmat <- NULL
     keeptable <- read.csv(paste(dirname(LoaderPATH),
-                                "names.csv",
+                                "Output/names.csv",
                                 sep = .Platform$file.sep))
     for (factor in 2:(dim(keeptable)[2])) {
     keeprowbool <- sapply(keeptable[, factor],
@@ -302,7 +318,7 @@ OneSmapperFreq2 <- function(LoaderPATH = "fcs", Bins = 250, FFdata) {
         percpos <- (
             sum(group > Coords[which(Coords$X == pname),
                                 2])/length(group)) * 100
-        # print(percpos)
+
         return(percpos)
     }
 
@@ -340,7 +356,7 @@ OneSmapperFreq2 <- function(LoaderPATH = "fcs", Bins = 250, FFdata) {
     ftestcol <- seq(from = min(Xx1DtSNEmat),
                     to = (max(Xx1DtSNEmat) - (max(Xx1DtSNEmat)/Bins)),
                     by = (max(Xx1DtSNEmat)/Bins))
-    if (OneDtSNEname == "input") {
+    if (OneDtSNEname == "yOneSense") {
         suppressWarnings(d1 <- plot_ly(z = fhmapclu,
                                     y = rownames(fhmapclu),
                                     x = ftestcol,
@@ -372,13 +388,6 @@ OneSmapperFreq2 <- function(LoaderPATH = "fcs", Bins = 250, FFdata) {
                         symbol = "circle-dot")
     suppressWarnings(fcombined <- subplot(OneSplot, d2, d1, nrows = 2,
                                 shareY = TRUE, shareX = TRUE))
-    fcombined
-    export(fcombined, file = paste(dirname(LoaderPATH),
-                                "grouptwo.png",
-                                sep = .Platform$file.sep))
-
-    browseURL(paste(dirname(LoaderPATH),
-                "grouptwo.png",
-                sep = .Platform$file.sep))
+    return(fcombined)
 
 }
