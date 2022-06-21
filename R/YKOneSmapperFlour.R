@@ -34,132 +34,210 @@
 #' #fcsoutpath <- system.file('extdata/fcs_Out',package='oneSENSE')
 #' #remove hash symbol to run
 #' #OneSmapperFlour(LoaderPATH=fcsoutpath) #remove hash symbol to run
-OneSmapperFlour <- function(LoaderPATH = "S:\\Mcyto\\Experiments\\R&D\\2022\\George-Alehandro_oneSense\\Output",
-                            Bins = 250,
-                            local = NULL,
-                            doCoords = FALSE,
-                            doFreq = FALSE) {
-    message("Running OneSmapperFlour")
-    fs <- read.flowSet(path = LoaderPATH, pattern = ".fcs$")
-    FcsFileNames <- rownames(keyword(fs, "FILENAME"))
-    FNumBC <- length(fs)
-    FFdata <- NULL
-    for (FFs in 1:FNumBC) {
-        FFa <- exprs(fs[[FFs]])
-        # Fixup column names
-        colnames(FFa) <- fs[[FFs]]@parameters$desc
-        empties <- which(is.na(colnames(FFa)) | colnames(FFa) == " ")
-        colnames(FFa)[empties] <- fs[[FFs]]@parameters$name[empties]
-        fs[[FFs]]@parameters$desc <- colnames(FFa)
-        FFa <- cbind(FFa, rep(FFs, dim(FFa)[1]))
-        colnames(FFa)[dim(FFa)[2]] <- "InFile"
-        # Concatenate
-        FFdata <- rbind(FFdata, FFa)
-    }
+OneSmapperFlour <-
+    function(LoaderPATH = "S:\\Mcyto\\Experiments\\R&D\\2022\\George-Alehandro_oneSense\\Output",
+             Bins = 250,
+             local = NULL,
+             doCoords = FALSE,
+             doFreq = FALSE,
+             treatment = F) {
+        message("Running OneSmapperFlour")
+        fs <- read.flowSet(path = LoaderPATH, pattern = ".fcs$")
+        FcsFileNames <- rownames(keyword(fs, "FILENAME"))
+        FNumBC <- length(fs)
+        FFdata <- NULL
+        for (FFs in 1:FNumBC) {
+            FFa <- exprs(fs[[FFs]])
+            # Fixup column names
+            colnames(FFa) <- fs[[FFs]]@parameters$desc
+            empties <-
+                which(is.na(colnames(FFa)) | colnames(FFa) == " ")
+            colnames(FFa)[empties] <- fs[[FFs]]@parameters$name[empties]
+            fs[[FFs]]@parameters$desc <- colnames(FFa)
+            FFa <- cbind(FFa, rep(FFs, dim(FFa)[1]))
+            colnames(FFa)[dim(FFa)[2]] <- "InFile"
+            # Concatenate
+            FFdata <- rbind(FFdata, FFa)
+        }
 
-    lgcl <- logicleTransform(w = 0.05, t = 16409, m = 4.5, a = 0)
+        lgcl <- logicleTransform(w = 0.05,
+                                 t = 16409,
+                                 m = 4.5,
+                                 a = 0)
 
-    Xx1DtSNEmat <- NULL
-    if (is.null(local)){
-        keeptable <- read.csv(paste(LoaderPATH,
-                                    "Output/names.csv",
-                                    sep = .Platform$file.sep))}
-    else {
-        keeptable <- read.csv(paste(local,
-                                    "names.csv",
-                                    sep = .Platform$file.sep))
-    }
-    for (factor in 2:(dim(keeptable)[2])) {
-    # edited code
-    #keeprowbool <- sapply(keeptable[, factor], function(x) any(x == "Y"))
-    keeprowbool <- sapply(keeptable[, factor], function(x) any(x == "Y"))
-    keepnames <- keeptable[keeprowbool, 1]
-    keeprows <- subset(keeptable, keeprowbool)
-    data <- FFdata[, which(colnames(FFdata) %in% keeprows[, 1])]
-    data <- as.matrix(data)
+        Xx1DtSNEmat <- NULL
+        if (is.null(local)) {
+            keeptable <-
+                read.csv(
+                    paste(
+                        "/media/data/html/source/CIPHEoneSENSE/OUTPUT",
+                        "names.csv",
+                        sep = .Platform$file.sep
+                    )
+                )
+        }
+        else {
+            keeptable <- read.csv(paste(local,
+                                        "names.csv",
+                                        sep = .Platform$file.sep))
+        }
+        for (factor in 2:(dim(keeptable)[2])) {
+            # edited code
+            #keeprowbool <- sapply(keeptable[, factor], function(x) any(x == "Y"))
+            keeprowbool <-
+                sapply(keeptable[, factor], function(x)
+                    any(x == "Y"))
+            keepnames <- keeptable[keeprowbool, 1]
+            keeprows <- subset(keeptable, keeprowbool)
+            data <- FFdata[, which(colnames(FFdata) %in% keeprows[, 1])]
+            data <- as.matrix(data)
 
-    colnames(data) <- colnames(FFdata)[which(colnames(FFdata) %in% keeprows[, 1])]
-    data <- cbind(data,
-                FFdata[,
-                which(colnames(FFdata) %in% colnames(keeptable[-1]))])
-    data1 <- apply(data, 2, lgcl)
-    message("Applying logicle transform")
-    OneDtSNEname <- colnames(keeptable)[factor]
-    dataX <- data1[, which(colnames(data1) %in% keeprows[, 1])]
-    tSNEmat1 <- as.matrix(data[, OneDtSNEname])
-    colnames(tSNEmat1) <- OneDtSNEname
-    hist(tSNEmat1, 100)
-    Xx1DtSNEmat <- cbind(Xx1DtSNEmat, tSNEmat1)
+            colnames(data) <-
+                colnames(FFdata)[which(colnames(FFdata) %in% keeprows[, 1])]
+            data <- cbind(data,
+                          FFdata[,
+                                 which(colnames(FFdata) %in% colnames(keeptable[-1]))])
+            data1 <- apply(data, 2, lgcl)
+            message("Applying logicle transform")
+            OneDtSNEname <- colnames(keeptable)[factor]
+            dataX <- data1[, which(colnames(data1) %in% keeprows[, 1])]
+            tSNEmat1 <- as.matrix(data[, OneDtSNEname])
+            colnames(tSNEmat1) <- OneDtSNEname
+            hist(tSNEmat1, 100)
+            Xx1DtSNEmat <- cbind(Xx1DtSNEmat, tSNEmat1)
+            print(head(Xx1DtSNEmat))
+            # Make heatplot annotation
+            dataX <- as.matrix(dataX)
+            tSNEbins <- cut(tSNEmat1, breaks = Bins, labels = 1:Bins)
+            OneSENSEmed <- apply(dataX, 2,
+                                 function(x)
+                                     (tapply(x, tSNEbins, FUN = median)))
+            OneSENSEmed[is.na(OneSENSEmed)] <- 0
 
-    # Make heatplot annotation
-    dataX <- as.matrix(dataX)
-    tSNEbins <- cut(tSNEmat1, breaks = Bins, labels = 1:Bins)
-    OneSENSEmed <- apply(dataX, 2,
-                        function(x) (tapply(x, tSNEbins, FUN = median)))
-    OneSENSEmed[is.na(OneSENSEmed)] <- 0
 
-
-    if (is.null(local)){
-        pdfFN <- paste(dirname(LoaderPATH),
-                       paste0(OneDtSNEname, "_Freq.pdf"),
-                       sep = .Platform$file.sep)}
-    else {
-        pdfFN <- paste(local,
-                       paste0(OneDtSNEname, "_Freq.pdf"),
-                       sep = .Platform$file.sep)
-    }
-    pdf(file = pdfFN, width = 14, height = 6)
-    breaks = seq(0, 3, by = 0.005)
-    my_palette <-
-        colorRampPalette(c("blue", "white", "red"))(n = length(breaks) - 1)
-    hmap <- heatmap.2(t(OneSENSEmed), col = my_palette, breaks = breaks,
-                    margins = c(10, 20), Colv = FALSE, dendrogram = "row",
-                    cexCol = 1, cexRow = 1, scale = "none", key = TRUE,
-                    trace = "none", density.info = c("none"), keysize = 1)
-    hmapclu = t(OneSENSEmed)[hmap$rowInd, hmap$colInd]
-    hmapclut <- t(hmapclu)
-    testcol <- seq(from = min(Xx1DtSNEmat),
-                    to = (max(Xx1DtSNEmat) - (max(Xx1DtSNEmat)/Bins)),
-                    by = (max(Xx1DtSNEmat)/Bins))
-    if (OneDtSNEname == "xOneSense") {
-        p1 <- plot_ly(z = hmapclu, y = rownames(hmapclu), x = testcol,
+            if (is.null(local)) {
+                pdfFN <- paste(dirname(LoaderPATH),
+                               paste0(OneDtSNEname, "_Freq.pdf"),
+                               sep = .Platform$file.sep)
+            }
+            else {
+                pdfFN <- paste(local,
+                               paste0(OneDtSNEname, "_Freq.pdf"),
+                               sep = .Platform$file.sep)
+            }
+            pdf(file = pdfFN,
+                width = 14,
+                height = 6)
+            breaks = seq(0, 3, by = 0.005)
+            my_palette <-
+                colorRampPalette(c("blue", "white", "red"))(n = length(breaks) - 1)
+            hmap <-
+                heatmap.2(
+                    t(OneSENSEmed),
+                    col = my_palette,
+                    breaks = breaks,
+                    margins = c(10, 20),
+                    Colv = FALSE,
+                    dendrogram = "row",
+                    cexCol = 1,
+                    cexRow = 1,
+                    scale = "none",
+                    key = TRUE,
+                    trace = "none",
+                    density.info = c("none"),
+                    keysize = 1
+                )
+            hmapclu = t(OneSENSEmed)[hmap$rowInd, hmap$colInd]
+            hmapclut <- t(hmapclu)
+            testcol <- seq(
+                from = min(Xx1DtSNEmat),
+                to = (max(Xx1DtSNEmat) - (max(
+                    Xx1DtSNEmat
+                ) / Bins)),
+                by = (max(Xx1DtSNEmat) / Bins)
+            )
+            if (OneDtSNEname == "xOneSense") {
+                p1 <- plot_ly(
+                    z = hmapclu,
+                    y = rownames(hmapclu),
+                    x = testcol,
                     colors = my_palette,
-                    type = "heatmap") %>% layout(title = paste(OneDtSNEname,
-                                            "Median heatplot", sep = " "))
-        p1
-    } else {
-        p2 <- plot_ly(z = hmapclut, x = colnames(hmapclut), y = testcol,
-            colors = my_palette,
-            type = "heatmap") %>% layout(title = paste(OneDtSNEname,
-                "Median heatplot", sep = " "), showlegend = FALSE)
-        p2
+                    type = "heatmap"
+                ) %>% layout(title = paste(OneDtSNEname,
+                                           "Median heatplot", sep = " "))
+                p1
+            } else {
+                p2 <- plot_ly(
+                    z = hmapclut,
+                    x = colnames(hmapclut),
+                    y = testcol,
+                    colors = my_palette,
+                    type = "heatmap"
+                ) %>% layout(
+                    title = paste(OneDtSNEname,
+                                  "Median heatplot", sep = " "),
+                    showlegend = FALSE
+                )
+                p2
+            }
+
+
+            dev.off()
+
+        }
+        print(head(Xx1DtSNEmat))
+        print('FFdata')
+        print(head(FFdata))
+
+
+        if (treatment) {
+            print('case treatment')
+            Treatment <- FFdata[, 'Treatment']
+            print('head(Xx1DtSNEmat)')
+            print(head(Xx1DtSNEmat))
+            print(tail(Xx1DtSNEmat))
+            Xx1DtSNEmat <- cbind(Xx1DtSNEmat, Treatment)
+            Xx1DtSNEmat<-data.frame(Xx1DtSNEmat)
+            Xx1DtSNEmat$Treatment[Xx1DtSNEmat$Treatment==0] <- 'Not treated'
+            Xx1DtSNEmat$Treatment[Xx1DtSNEmat$Treatment==1] <- 'Treated'
+            Xx1DtSNEmat$Treatment <- as.factor(Xx1DtSNEmat$Treatment)
+            OneSplot <-plot_ly(
+                type = "scatter",
+                data = data.frame(Xx1DtSNEmat),
+                x = Xx1DtSNEmat[, 'xOneSense'],
+                y = Xx1DtSNEmat[, 'yOneSense'],
+                mode = "markers",
+                color = ~Treatment, colors = c("blue", "yellow")
+            )
+        }
+        else{
+            OneSplot <- plot_ly(
+                data.frame(Xx1DtSNEmat),
+                x = Xx1DtSNEmat[, 1],
+                y = Xx1DtSNEmat[, 2],
+                marker = list(size = 5,
+                              color = 'rgba(0, 0, 0, .2)'),
+                type = "scatter",
+                symbol = "circle-dot"
+            )
+        }
+        suppressWarnings(combined <- subplot(
+            OneSplot,
+            p2,
+            p1,
+            nrows = 2,
+            shareY = TRUE,
+            shareX = TRUE
+        ))
+        return(combined)
+
+        # export(combined, file = paste(dirname(LoaderPATH),
+        #         "groupone.png",
+        #         sep = .Platform$file.sep))
+        # browseURL(paste(dirname(LoaderPATH),
+        #                 "groupone.png",
+        #                 sep = .Platform$file.sep))
     }
-
-
-    dev.off()
-
-    }
-    OneSplot <- plot_ly(data.frame(Xx1DtSNEmat),
-                    x = Xx1DtSNEmat[, 1],
-                    y = Xx1DtSNEmat[, 2],
-                    marker = list(size = 5,
-                                    color = 'rgba(0, 0, 0, .2)'
-                                    ),
-                    type = "scatter",
-                    symbol = "circle-dot")
-    suppressWarnings(combined <- subplot(OneSplot, p2, p1,
-                                        nrows = 2,
-                                        shareY = TRUE,
-                                        shareX = TRUE))
-    return(combined)
-
-    # export(combined, file = paste(dirname(LoaderPATH),
-    #         "groupone.png",
-    #         sep = .Platform$file.sep))
-    # browseURL(paste(dirname(LoaderPATH),
-    #                 "groupone.png",
-    #                 sep = .Platform$file.sep))
-}
 
 
 ## *************************************************************************##
@@ -178,7 +256,8 @@ OneSmapperFlour <- function(LoaderPATH = "S:\\Mcyto\\Experiments\\R&D\\2022\\Geo
 #' getParameters(dir3)
 getParameters <- function(rawFCSdir) {
     fcsFile <- list.files(path = rawFCSdir,
-                            pattern = ".fcs$", full.names = TRUE)
+                          pattern = ".fcs$",
+                          full.names = TRUE)
     fcs <- suppressWarnings(read.FCS(fcsFile[1]))
     pd <- fcs@parameters@data
     markers <- paste("<", pd$name, ">:", pd$desc, sep = "")
@@ -213,7 +292,8 @@ OneSmapperFreq1 <- function(LoaderPATH = "fcs_Out") {
         FFa <- exprs(fs[[FFs]])
         # Fixup column names
         colnames(FFa) <- fs[[FFs]]@parameters$desc
-        empties <- which(is.na(colnames(FFa)) | colnames(FFa) == " ")
+        empties <-
+            which(is.na(colnames(FFa)) | colnames(FFa) == " ")
         colnames(FFa)[empties] <- fs[[FFs]]@parameters$name[empties]
         fs[[FFs]]@parameters$desc <- colnames(FFa)
         # Add file label
@@ -242,20 +322,24 @@ OneSmapperFreq1 <- function(LoaderPATH = "fcs_Out") {
 #' file5 <- system.file('extdata/myFFdatas.rds', package = 'oneSENSE')
 #' FFdata = readRDS(file5)
 #' getCoords(dir4, FFdata)
-getCoords <- function(LoaderPATH = LoaderPATH, FFdata = FFdata) {
-    lgcl <- logicleTransform(w = 0.25, t = 16409, m = 4.5, a = 0)
+getCoords <- function(LoaderPATH = LoaderPATH,
+                      FFdata = FFdata) {
+    lgcl <- logicleTransform(w = 0.25,
+                             t = 16409,
+                             m = 4.5,
+                             a = 0)
     gckeeptable <- read.csv(paste(dirname(LoaderPATH),
-                                "Output/names.csv",
-                                sep = .Platform$file.sep))
+                                  "Output/names.csv",
+                                  sep = .Platform$file.sep))
     gckeeprowbool <- apply(gckeeptable[, c(2, 3)],
-                                1,
-                                function(x) any(x == "Y"))
+                           1,
+                           function(x)
+                               any(x == "Y"))
     gckeepnames <- gckeeptable[gckeeprowbool, 1]
     gckeeprows <- subset(gckeeptable, gckeeprowbool)
     gcdata <- FFdata[, which(colnames(FFdata) %in% gckeeprows[, 1])]
     gcdata <- cbind(gcdata,
-                FFdata[, which(
-                    colnames(FFdata) %in% colnames(gckeeptable[-1]))])
+                    FFdata[, which(colnames(FFdata) %in% colnames(gckeeptable[-1]))])
     data1 <- apply(gcdata, 2, lgcl)
     coordsVar <- list(keepnames = gckeepnames, data1 = data1)
     return(coordsVar)
@@ -278,116 +362,152 @@ getCoords <- function(LoaderPATH = LoaderPATH, FFdata = FFdata) {
 #' file5 <- system.file('extdata/myFFdatas.rds', package = 'oneSENSE')
 #' FFdata1 <- readRDS(file5)
 #' OneSmapperFreq2(dir2, 250, FFdata1) #remove hash symbol to run
-OneSmapperFreq2 <- function(LoaderPATH = "fcs", Bins = 250, FFdata) {
-    lgcl <- logicleTransform(w = 0.05, t = 16409, m = 4.5, a = 0)
-    Xx1DtSNEmat <- NULL
-    keeptable <- read.csv(paste(dirname(LoaderPATH),
-                                "Output/names.csv",
-                                sep = .Platform$file.sep))
-    for (factor in 2:(dim(keeptable)[2])) {
-    keeprowbool <- sapply(keeptable[, factor],
-                            function(x) any(x == "Y"))
-    keepnames <- keeptable[keeprowbool, 1]
-    keeprows <- subset(keeptable, keeprowbool)
-    data <- FFdata[, which(colnames(FFdata) %in% keeprows[, 1])]
-    data <- cbind(data,
-            FFdata[, which(colnames(FFdata) %in% colnames(keeptable[-1]))])
-    data1 <- apply(data, 2, lgcl)  #logicle transform
-    OneDtSNEname <- colnames(keeptable)[factor]
-    keeprowbool <- sapply(keeptable[, factor],
-                        function(x) any(x == "Y"))
-    keepnames <- keeptable[keeprowbool, 1]
-    keeprows <- subset(keeptable, keeprowbool)
-    dataX <- data1[, which(colnames(data1) %in% keeprows[, 1])]
-    tSNEmat1 <- as.matrix(data[, OneDtSNEname])
-    colnames(tSNEmat1) <- OneDtSNEname
-    hist(tSNEmat1, 100)
-    Xx1DtSNEmat <- cbind(Xx1DtSNEmat, tSNEmat1)
-    # Make heatplot annotation
+OneSmapperFreq2 <-
+    function(LoaderPATH = "fcs",
+             Bins = 250,
+             FFdata) {
+        lgcl <- logicleTransform(w = 0.05,
+                                 t = 16409,
+                                 m = 4.5,
+                                 a = 0)
+        Xx1DtSNEmat <- NULL
+        keeptable <- read.csv(paste(dirname(LoaderPATH),
+                                    "Output/names.csv",
+                                    sep = .Platform$file.sep))
+        for (factor in 2:(dim(keeptable)[2])) {
+            keeprowbool <- sapply(keeptable[, factor],
+                                  function(x)
+                                      any(x == "Y"))
+            keepnames <- keeptable[keeprowbool, 1]
+            keeprows <- subset(keeptable, keeprowbool)
+            data <- FFdata[, which(colnames(FFdata) %in% keeprows[, 1])]
+            data <- cbind(data,
+                          FFdata[, which(colnames(FFdata) %in% colnames(keeptable[-1]))])
+            data1 <- apply(data, 2, lgcl)  #logicle transform
+            OneDtSNEname <- colnames(keeptable)[factor]
+            keeprowbool <- sapply(keeptable[, factor],
+                                  function(x)
+                                      any(x == "Y"))
+            keepnames <- keeptable[keeprowbool, 1]
+            keeprows <- subset(keeptable, keeprowbool)
+            dataX <- data1[, which(colnames(data1) %in% keeprows[, 1])]
+            tSNEmat1 <- as.matrix(data[, OneDtSNEname])
+            colnames(tSNEmat1) <- OneDtSNEname
+            hist(tSNEmat1, 100)
+            Xx1DtSNEmat <- cbind(Xx1DtSNEmat, tSNEmat1)
+            # Make heatplot annotation
 
-    dataGNorm <- dataX
-    tSNEbins <- cut(tSNEmat1, breaks = Bins, labels = 1:Bins)
-    OneSENSEpp <- matrix(dataX, nrow = Bins, ncol = dim(dataX)[2])
-    colnames(OneSENSEpp) <- colnames(dataX)
-    Coords <- read.csv(paste(dirname(LoaderPATH),
-                            "Coords.csv",
-                            sep = .Platform$file.sep))
-    for (pname in colnames(dataX)) {
-        overthresh <- function(group) {
-        # what is this group
-        percpos <- (
-            sum(group > Coords[which(Coords$X == pname),
-                                2])/length(group)) * 100
+            dataGNorm <- dataX
+            tSNEbins <- cut(tSNEmat1, breaks = Bins, labels = 1:Bins)
+            OneSENSEpp <- matrix(dataX, nrow = Bins, ncol = dim(dataX)[2])
+            colnames(OneSENSEpp) <- colnames(dataX)
+            Coords <- read.csv(paste(dirname(LoaderPATH),
+                                     "Coords.csv",
+                                     sep = .Platform$file.sep))
+            for (pname in colnames(dataX)) {
+                overthresh <- function(group) {
+                    # what is this group
+                    percpos <- (sum(group > Coords[which(Coords$X == pname),
+                                                   2]) / length(group)) * 100
 
-        return(percpos)
+                    return(percpos)
+                }
+
+                OneSENSEpp[, pname] <-
+                    tapply(dataX[, pname], tSNEbins, FUN = overthresh)
+            }
+
+            OneSENSEpp[is.na(OneSENSEpp)] <- 0
+
+
+            pdfFN <- paste(dirname(LoaderPATH),
+                           paste0(OneDtSNEname, "_Freq.pdf"),
+                           sep = .Platform$file.sep)
+            pdf(file = pdfFN,
+                width = 14,
+                height = 6)
+            breaks = seq(0, 100, by = 0.05)
+            my_palette <- colorRampPalette(c("blue", "white",
+                                             "red"))(n = length(breaks) - 1)
+
+
+
+            fhmap <- heatmap.2(
+                t(OneSENSEpp),
+                col = my_palette,
+                breaks = breaks,
+                margins = c(10, 20),
+                Colv = FALSE,
+                dendrogram = "row",
+                cexCol = 1,
+                cexRow = 1,
+                scale = "none",
+                key = TRUE,
+                trace = "none",
+                density.info = c("none"),
+                keysize = 1
+            )
+            fhmapclu = t(OneSENSEpp)[fhmap$rowInd, fhmap$colInd]
+            fhmapclut <- t(fhmapclu)
+            ftestcol <- seq(
+                from = min(Xx1DtSNEmat),
+                to = (max(Xx1DtSNEmat) - (max(
+                    Xx1DtSNEmat
+                ) / Bins)),
+                by = (max(Xx1DtSNEmat) / Bins)
+            )
+            if (OneDtSNEname == "yOneSense") {
+                suppressWarnings(
+                    d1 <- plot_ly(
+                        z = fhmapclu,
+                        y = rownames(fhmapclu),
+                        x = ftestcol,
+                        colors = my_palette,
+                        type = "heatmap"
+                    ) %>%
+                        layout(
+                            title = paste(OneDtSNEname,
+                                          "Frequency heatplot", sep = " ")
+                        )
+                )
+                d1
+            } else {
+                suppressWarnings(
+                    d2 <- plot_ly(
+                        z = fhmapclut,
+                        x = colnames(fhmapclut),
+                        y = ftestcol,
+                        colors = my_palette,
+                        type = "heatmap"
+                    ) %>%
+                        layout(
+                            title = paste(OneDtSNEname,
+                                          "Frequency heatplot", sep = " ")
+                        )
+                )
+                d2
+            }
+            dev.off()
+
+        }
+        OneSplot <- plot_ly(
+            data.frame(Xx1DtSNEmat),
+            x = Xx1DtSNEmat[, 1],
+            y = Xx1DtSNEmat[, 2],
+            marker = list(size = 5,
+                          color = 'rgba(0, 0, 0, .2)'),
+            type = "scatter",
+            symbol = "circle-dot"
+        )
+        suppressWarnings(fcombined <-
+                             subplot(
+                                 OneSplot,
+                                 d2,
+                                 d1,
+                                 nrows = 2,
+                                 shareY = TRUE,
+                                 shareX = TRUE
+                             ))
+        return(fcombined)
+
     }
-
-    OneSENSEpp[, pname] <- tapply(dataX[, pname], tSNEbins, FUN = overthresh)
-    }
-
-    OneSENSEpp[is.na(OneSENSEpp)] <- 0
-
-
-    pdfFN <- paste(dirname(LoaderPATH),
-                    paste0(OneDtSNEname, "_Freq.pdf"),
-                    sep = .Platform$file.sep)
-    pdf(file = pdfFN, width = 14, height = 6)
-    breaks = seq(0, 100, by = 0.05)
-    my_palette <- colorRampPalette(c("blue", "white",
-                                    "red"))(n = length(breaks) - 1)
-
-
-
-    fhmap <- heatmap.2(t(OneSENSEpp),
-                        col = my_palette,
-                        breaks = breaks,
-                        margins = c(10, 20),
-                        Colv = FALSE,
-                        dendrogram = "row",
-                        cexCol = 1,
-                        cexRow = 1,
-                        scale = "none",
-                        key = TRUE,
-                        trace = "none",
-                        density.info = c("none"),
-                        keysize = 1)
-    fhmapclu = t(OneSENSEpp)[fhmap$rowInd, fhmap$colInd]
-    fhmapclut <- t(fhmapclu)
-    ftestcol <- seq(from = min(Xx1DtSNEmat),
-                    to = (max(Xx1DtSNEmat) - (max(Xx1DtSNEmat)/Bins)),
-                    by = (max(Xx1DtSNEmat)/Bins))
-    if (OneDtSNEname == "yOneSense") {
-        suppressWarnings(d1 <- plot_ly(z = fhmapclu,
-                                    y = rownames(fhmapclu),
-                                    x = ftestcol,
-                                    colors = my_palette,
-                                    type = "heatmap") %>%
-                        layout(title = paste(OneDtSNEname,
-                                            "Frequency heatplot", sep = " ")))
-        d1
-    } else {
-        suppressWarnings(d2 <- plot_ly(z = fhmapclut,
-                                    x = colnames(fhmapclut),
-                                    y = ftestcol,
-                                    colors = my_palette,
-                                    type = "heatmap") %>%
-                        layout(title = paste(OneDtSNEname,
-                                            "Frequency heatplot", sep = " ")))
-        d2
-    }
-    dev.off()
-
-    }
-    OneSplot <- plot_ly(data.frame(Xx1DtSNEmat),
-                        x = Xx1DtSNEmat[, 1],
-                        y = Xx1DtSNEmat[, 2],
-                        marker = list(size = 5,
-                                    color = 'rgba(0, 0, 0, .2)'
-                        ),
-                        type = "scatter",
-                        symbol = "circle-dot")
-    suppressWarnings(fcombined <- subplot(OneSplot, d2, d1, nrows = 2,
-                                shareY = TRUE, shareX = TRUE))
-    return(fcombined)
-
-}
