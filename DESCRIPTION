@@ -1,21 +1,13 @@
-Package: oneSENSE
+Package: cipheoneSENSE
 Type: Package
 Title: One-Dimensional Soli-Expression by Nonlinear Stochastic 
     Embedding (OneSENSE)
-Version: 0.99.5
-Date: 2017-07-10
+Version: 0.0.1
+Date: 2022-06-21
 Author: Cheng Yang, Evan Newell, Yong Kee Tan
 Maintainer: Yong Kee Tan <yongkee.t@gmail.com>
-Description: A graphical user interface that facilitates the dimensional 
-    reduction method based on the t-distributed stochastic neighbor embedding
-    (t-SNE) algorithm, for categorical analysis of mass cytometry data. With 
-    One-SENSE, measured parameters are grouped into predefined categories, 
-    and cells are projected onto a space composed of one dimension for each 
-    category. Each dimension is informative and can be annotated through the 
-    use of heatplots aligned in parallel to each axis, allowing for 
-    simultaneous visualization of two catergories across a two-dimensional
-    plot. The cellular occupancy of the resulting plots alllows for direct 
-    assessment of the relationships between the categories. 
+Contribution: George Alehandro Saad <george-alehandro.saad@protonmail.com>
+Description: Modified and updated version of oneSENSE also allowing for multi-opt-SNE dimension reduction.
 Depends: R (>= 3.4), webshot, shiny, shinyFiles, scatterplot3d
 Imports: 
     Rtsne, 
