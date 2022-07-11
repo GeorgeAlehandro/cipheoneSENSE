@@ -100,7 +100,13 @@ OneSmapperFlour <-
             data1 <- apply(data, 2, lgcl)
             message("Applying logicle transform")
             OneDtSNEname <- colnames(keeptable)[factor]
+            print('OneDtSNEname')
+            print(OneDtSNEname)
+            print('data1')
+            print(head(data1))
             dataX <- data1[, which(colnames(data1) %in% keeprows[, 1])]
+            print('dataX')
+            print(head(dataX))
             tSNEmat1 <- as.matrix(data[, OneDtSNEname])
             colnames(tSNEmat1) <- OneDtSNEname
             hist(tSNEmat1, 100)
@@ -456,7 +462,7 @@ OneSmapperFreq2 <-
                 ) / Bins)),
                 by = (max(Xx1DtSNEmat) / Bins)
             )
-            if (OneDtSNEname == "yOneSense") {
+            if (OneDtSNEname == "xOneSense") {
                 suppressWarnings(
                     d1 <- plot_ly(
                         z = fhmapclu,
