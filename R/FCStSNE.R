@@ -30,7 +30,8 @@ FCStSNE <- function(LoaderPATH = "fcs",
                     DotSNE = TRUE,
                     DoOneSENSE = TRUE,
                     multiopt = F,
-                    Bins = 250) {
+                    Bins = 250,
+                    DataNeedsTransformation = FALSE) {
   fs <- read.flowSet(path = LoaderPATH, pattern = ".fcs$")
   FcsFileNames <- rownames(keyword(fs, "FILENAME"))
   NumBC <- length(fs)  #3
@@ -77,13 +78,18 @@ FCStSNE <- function(LoaderPATH = "fcs",
   keeprows <- subset(keeptable, keeprowbool)
   data <- FFdata[, which(colnames(FFdata) %in% keeprows[, 1])]
   data <- as.data.frame(data)
+  if (DataNeedsTransformation){
   lgcl <- logicleTransform(w = 0.25,
                            t = 16409,
                            m = 4.5,
                            a = 0)
   ilgcl <- inverseLogicleTransform(trans = lgcl)
   data1 <- apply(data, 2, lgcl)
-  FFdata1 <- apply(FFdata, 2, lgcl)
+  FFdata1 <- apply(FFdata, 2, lgcl)}
+  else {
+    data1<-data
+    FFdata1<-FFdata
+  }
   score <- NULL
   tSNEmat <- NULL
   if (DotSNE) {
@@ -113,7 +119,6 @@ FCStSNE <- function(LoaderPATH = "fcs",
       iter <- 100
       run <-
         "/media/data/cyto/MultiOptTSNE/Multicore-opt-SNE/MulticoreTSNE/run/run_optsne.py"
-      print('running python')
       cmd <- paste0(
         "python2 ",
         run,
@@ -164,8 +169,6 @@ FCStSNE <- function(LoaderPATH = "fcs",
         dataX <-
           FFdata1[, which(colnames(FFdata1) %in% keeprows[, 1])]
         dataX <- as.matrix(dataX)
-        print('datax')
-        print(head(dataX))
         if (!multiopt) {
           tSNEdata3 <- Rtsne(dataX,
                              dims = 1,
@@ -186,7 +189,6 @@ FCStSNE <- function(LoaderPATH = "fcs",
             quote = FALSE,
             row.names = FALSE
           )
-          print('csv written')
           a <- paste0(roots.temp, rep, ".csv")
           b <- paste0(roots.temp, rep, "_tsne.csv")
           temp <- paste0(roots.temp, rep, ".log")
@@ -194,7 +196,6 @@ FCStSNE <- function(LoaderPATH = "fcs",
           iter <- 100
           run <-
             "/media/data/cyto/MultiOptTSNE/Multicore-opt-SNE/MulticoreTSNE/run/run_optsne.py"
-          print('running python')
           cmd <- paste0(
             "python2 ",
             run,
@@ -239,8 +240,6 @@ FCStSNE <- function(LoaderPATH = "fcs",
     } else {
       # loop from 2 to 4
       for (factor in 2:(dim(keeptable)[2])) {
-        print('factor')
-        print(factor)
         OneDtSNEname <- colnames(keeptable)[factor]
         keeprowbool <- sapply(keeptable[, factor],
                               function(x)
@@ -248,8 +247,6 @@ FCStSNE <- function(LoaderPATH = "fcs",
         keeprows <- subset(keeptable, keeprowbool)
         dataX <-
           FFdata1[, which(colnames(FFdata1) %in% keeprows[, 1])]
-        print('datax')
-        print(head(dataX))
         dataX <- as.matrix(dataX)
         if(!multiopt){
         tSNEdata3 <-
@@ -269,7 +266,6 @@ FCStSNE <- function(LoaderPATH = "fcs",
             quote = FALSE,
             row.names = FALSE
           )
-          print('csv written')
           a <- paste0(roots.temp, rep, ".csv")
           b <- paste0(roots.temp, rep, "_tsne.csv")
           temp <- paste0(roots.temp, rep, ".log")
@@ -277,7 +273,6 @@ FCStSNE <- function(LoaderPATH = "fcs",
           iter <- 100
           run <-
             "/media/data/cyto/MultiOptTSNE/Multicore-opt-SNE/MulticoreTSNE/run/run_optsne.py"
-          print('running python')
           cmd <- paste0(
             "python2 ",
             run,
@@ -294,23 +289,16 @@ FCStSNE <- function(LoaderPATH = "fcs",
             " 2>&1"
           )
           system(cmd)
-          print('system cmd done')
           #roots.temp <- "/media/data/cyto/MultiOptTSNE/TEMP/"
           c <- paste0(roots.temp, rep, "_tsne.csv")
           mat <- read.csv(c, header = FALSE)
           # tester 2-3 essais
           colnames(mat) <- OneDtSNEname
-          print('mat')
           mat <- as.matrix(mat)
-          print('head mat')
           tSNEmat1 <- mat
         }
-        print('head tsnemat1')
-        print(tSNEmat1)
         hist(tSNEmat1, 100)
         Xx1DtSNEmat <- cbind(Xx1DtSNEmat, tSNEmat1)
-        print('Xx1DtSNEmat')
-        print(head(Xx1DtSNEmat))
       }
       plot(
         Xx1DtSNEmat[, 1],
@@ -324,7 +312,6 @@ FCStSNE <- function(LoaderPATH = "fcs",
     }
   } else
     Xx1DtSNEmat <- NULL
-  print('b4 nxx1')
   NXx1 <- apply(Xx1DtSNEmat, 2,
                 function(x)
                   ((x - min(x)) / (max(x) - min(x))) * 10000)
@@ -334,8 +321,13 @@ FCStSNE <- function(LoaderPATH = "fcs",
   Nscore <- apply(score2, 2,
                   function(x)
                     ((x - min(x)) / (max(x) - min(x))) * 3.7)
+  if (DataNeedsTransformation){
   ilgcl <- inverseLogicleTransform(trans = lgcl)
   NIscore <- apply(Nscore, 2, ilgcl)
+  }
+  else{
+    NIscore <- Nscore
+  }
   colnames(NIscore) <- colnames(score2)
   NIscore <- cbind(NIscore, NXx1)
   message("Writing FCS Files")
