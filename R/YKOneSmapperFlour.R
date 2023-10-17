@@ -40,7 +40,8 @@ OneSmapperFlour <-
              local = NULL,
              doCoords = FALSE,
              doFreq = FALSE,
-             treatment = F) {
+             treatment = F,
+             DataNeedsTransformation = FALSE) {
         message("Running OneSmapperFlour")
         fs <- read.flowSet(path = LoaderPATH, pattern = ".fcs$")
         FcsFileNames <- rownames(keyword(fs, "FILENAME"))
@@ -59,12 +60,12 @@ OneSmapperFlour <-
             # Concatenate
             FFdata <- rbind(FFdata, FFa)
         }
-
+        if (DataNeedsTransformation){
         lgcl <- logicleTransform(w = 0.05,
                                  t = 16409,
                                  m = 4.5,
                                  a = 0)
-
+        }
         Xx1DtSNEmat <- NULL
         if (is.null(local)) {
             keeptable <-
@@ -97,13 +98,13 @@ OneSmapperFlour <-
             data <- cbind(data,
                           FFdata[,
                                  which(colnames(FFdata) %in% colnames(keeptable[-1]))])
+            if (DataNeedsTransformation){
             data1 <- apply(data, 2, lgcl)
             message("Applying logicle transform")
+            }
+            else{
+            data1 <- data}
             OneDtSNEname <- colnames(keeptable)[factor]
-            print('OneDtSNEname')
-            print(OneDtSNEname)
-            print('data1')
-            print(head(data1))
             dataX <- data1[, which(colnames(data1) %in% keeprows[, 1])]
             print('dataX')
             print(head(dataX))
@@ -329,7 +330,8 @@ OneSmapperFreq1 <- function(LoaderPATH = "fcs_Out") {
 #' FFdata = readRDS(file5)
 #' getCoords(dir4, FFdata)
 getCoords <- function(LoaderPATH = LoaderPATH,
-                      FFdata = FFdata) {
+                      FFdata = FFdata,
+                      DataNeedsTransformation = FALSE) {
     lgcl <- logicleTransform(w = 0.25,
                              t = 16409,
                              m = 4.5,
@@ -346,7 +348,11 @@ getCoords <- function(LoaderPATH = LoaderPATH,
     gcdata <- FFdata[, which(colnames(FFdata) %in% gckeeprows[, 1])]
     gcdata <- cbind(gcdata,
                     FFdata[, which(colnames(FFdata) %in% colnames(gckeeptable[-1]))])
-    data1 <- apply(gcdata, 2, lgcl)
+    if (DataNeedsTransformation){
+    data1 <- apply(gcdata, 2, lgcl)}
+    else {
+      data1 <- gcdata
+    }
     coordsVar <- list(keepnames = gckeepnames, data1 = data1)
     return(coordsVar)
 }
@@ -371,11 +377,14 @@ getCoords <- function(LoaderPATH = LoaderPATH,
 OneSmapperFreq2 <-
     function(LoaderPATH = "fcs",
              Bins = 250,
-             FFdata) {
+             FFdata,
+             DataNeedsTransformation = FALSE) {
+      if (DataNeedsTransformation){
         lgcl <- logicleTransform(w = 0.05,
                                  t = 16409,
                                  m = 4.5,
                                  a = 0)
+      }
         Xx1DtSNEmat <- NULL
         keeptable <- read.csv(paste(dirname(LoaderPATH),
                                     "Output/names.csv",
@@ -389,7 +398,12 @@ OneSmapperFreq2 <-
             data <- FFdata[, which(colnames(FFdata) %in% keeprows[, 1])]
             data <- cbind(data,
                           FFdata[, which(colnames(FFdata) %in% colnames(keeptable[-1]))])
+            if (DataNeedsTransformation){
             data1 <- apply(data, 2, lgcl)  #logicle transform
+            }
+            else{
+              data1 <- data
+            }
             OneDtSNEname <- colnames(keeptable)[factor]
             keeprowbool <- sapply(keeptable[, factor],
                                   function(x)
